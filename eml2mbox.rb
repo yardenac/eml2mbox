@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 #============================================================================================#
-# eml2mbox.rb v0.08                                                                          #
+# eml2mbox.rb v0.09                                                                          #
 # Last updated: Jan 23, 2004                                                                 #
 #                                                                                            #
 # Converts a bunch of eml files into one mbox file.                                          #
@@ -32,9 +32,7 @@
 # script; if not, please visit http://www.gnu.org/copyleft/gpl.html for more information.    #
 #============================================================================================#
 
-require "parsedate"
-
-include ParseDate
+require "date"
 
 #=======================================================#
 # Class that encapsulates the processing file in memory #
@@ -78,7 +76,7 @@ class FileInMemory
             if line =~ /^Date:\s/ and @date==nil
                 # Parse content of the Date header and convert to the mbox standard for the From_ line
                 @date = line.sub(/Date:\s/,'')
-                year, month, day, hour, minute, second, timezone, wday = parsedate(@date)
+                year, month, day, hour, minute, second, timezone, wday = DateTime._parse(@date, false).values_at(:year, :mon, :mday, :hour, :min, :sec, :zone, :wday)
                 # Need to convert the timezone from a string to a 4 digit offset
                 unless timezone =~ /[+|-]\d*/
                     timezone=ZoneOffset[timezone]
