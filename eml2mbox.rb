@@ -1,7 +1,7 @@
 #!/usr/bin/ruby
 # encoding: utf-8
 #============================================================================================#
-# eml2mbox.rb v0.11                                                                          #
+# eml2mbox.rb v0.12                                                                          #
 # Last updated: Jan 23, 2004                                                                 #
 #                                                                                            #
 # Converts a bunch of eml files into one mbox file.                                          #
@@ -84,8 +84,13 @@ class FileInMemory
                 unless timezone =~ /[+|-]\d*/
                     timezone=ZoneOffset[timezone]
                 end
-                time = Time.gm(year,month,day,hour,minute,second)
-                @date = formMboxDate(time,timezone)
+                begin
+                   time = Time.gm(year,month,day,hour,minute,second)
+                   @date = formMboxDate(time,timezone)
+                rescue ArgumentError
+                   @date = nil
+                   puts "WARN: Skipping badly formed date."
+                end
             end
         end
 
