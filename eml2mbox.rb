@@ -1,6 +1,7 @@
 #!/usr/bin/ruby
+# encoding: utf-8
 #============================================================================================#
-# eml2mbox.rb v0.10                                                                          #
+# eml2mbox.rb v0.11                                                                          #
 # Last updated: Jan 23, 2004                                                                 #
 #                                                                                            #
 # Converts a bunch of eml files into one mbox file.                                          #
@@ -58,6 +59,8 @@ class FileInMemory
     end
 
     def addLine(line)
+        line = line.force_encoding("ISO-8859-1").encode("utf-8", replace: nil)
+
         # If the line is a 'false' From line, add a '>' to its beggining
         line = line.sub(/From/, '>From') if line =~ /^From/ and @from!=nil
 
