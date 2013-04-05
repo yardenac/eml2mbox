@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 #============================================================================================#
-# eml2mbox.rb v0.09                                                                          #
+# eml2mbox.rb v0.10                                                                          #
 # Last updated: Jan 23, 2004                                                                 #
 #                                                                                            #
 # Converts a bunch of eml files into one mbox file.                                          #
@@ -240,7 +240,7 @@ end
 
     if not canceled
         puts
-        files = Dir["*.eml"]
+        files = Dir.glob("*.{eml,mai}", File::FNM_CASEFOLD)
         if files.size == 0
             puts "No *.eml files in this directory. mbox file not created."
             aFile.close
