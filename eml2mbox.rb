@@ -89,7 +89,8 @@ class FileInMemory
                    @date = formMboxDate(time,timezone)
                 rescue
                    @date = nil
-                   puts "WARN: Skipping badly formed date."
+                   $errors = true
+                   print "[skipping bad date]"
                 end
             end
         end
@@ -106,7 +107,8 @@ class FileInMemory
         if @from != nil
             # Add from and date to the first line
             if @date==nil
-                puts "WARN: Failed to extract date. Will use current time in the From_ line"
+                $errors = true
+                print "[replacing bad date with now]"
                 @date=formMboxDate(Time.now,nil)
             end
             @lines[0] = @from + " " + @date 
@@ -210,6 +212,7 @@ end
 #===============#
 
     $switches = extractSwitches()
+    $stdout.sync = true
 
     # Extract specified directory with emls and the target archive (if any)
     emlDir = "."     # default if not specified
@@ -256,16 +259,30 @@ end
             exit(0)
         end
         # For each .eml file in the specified directory do the following
+        puts "About to process #{files.size} mail files"
+        filenum = 0
+        errors = 0
         files.each() do |x|
-            puts "Processing file: "+x
+            $errors = false
+            filenum += 1
+            filenumtxt = filenum.to_s.rjust("#{files.size}".length)
+            print "#{filenumtxt}/#{files.size}: "+x+"  "
             thisFile = FileInMemory.new()
             File.open(x).each  {|item| thisFile.addLine(item) }
             lines = thisFile.getProcessedLines
             if lines == nil
-                puts "WARN: File ["+x+"] doesn't seem to have a regular From: line. Not included in mbox"
+                $errors = true
+                print "[skipping mail without regular From: line]"
             else
                 lines.each {|line| aFile.puts line}
             end
+            if $errors
+              print "\n"
+              errors += 1
+            else
+              print "\r"
+            end
         end
         aFile.close
+        puts "There were #{errors} files with errors.                                        "
     end
