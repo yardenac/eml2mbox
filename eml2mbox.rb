@@ -1,9 +1,6 @@
 #!/usr/bin/ruby
 # encoding: utf-8
 #============================================================================================#
-# eml2mbox.rb v0.13                                                                          #
-# Last updated: Jan 23, 2004                                                                 #
-#                                                                                            #
 # Converts a bunch of eml files into one mbox file.                                          #
 #                                                                                            #
 # Usage: [ruby] eml2mbx.rb [-c] [-l] [-s] [-yz] [emlpath [trgtmbx]]                          #
@@ -17,10 +14,6 @@
 #               line from the default [timezone][year] to [year][timezone].                  #
 #         emlpath - Path of dir with eml files. Defaults to the current dir if not specified #
 #         trgtmbx - Name of the target mbox file. Defaults to "archive.mbox" in 'emlpath'    #
-#                                                                                            #
-# Ruby homepage: http://www.ruby-lang.org/en/                                                #
-# Unix mailbox format: http://www.broobles.com/eml2mbox/mbox.html                            #
-# This script  : http://www.broobles.com/eml2mbox                                            #
 #                                                                                            #
 #============================================================================================#
 # Licence:                                                                                   #
