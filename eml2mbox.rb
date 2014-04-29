@@ -210,7 +210,7 @@ end
     # Extract specified directory with emls and the target archive (if any)
     emlDir = "."     # default if not specified
     emlDir = ARGV[0] if ARGV[0]!=nil
-    mboxArchive = emlDir+"/archive.mbox"    # default if not specified
+    mboxArchive = "archive.mbox"    # default if not specified
     mboxArchive = ARGV[1] if ARGV[1] != nil
 
     # Show specified settings
