@@ -5,6 +5,7 @@
 #                                                                                            #
 # Usage: [ruby] eml2mbx.rb [-c] [-l] [-s] [-yz] [emlpath [trgtmbx]]                          #
 #         Switches:                                                                          #
+#            -a assume all files are emails - ignore extensions
 #            -c Remove CRs (^M) appearing at end of lines (Unix)                             #
 #            -l Remove LFs appearing at beggining of lines (old Mac) - not tested            #
 #            -s Don't use standard mbox postmark formatting (for From_ line)                 #
@@ -177,7 +178,10 @@ def extractSwitches()
     switches = Hash.new(false)  # All switches (values) default to false
     i=0
     while (ARGV[i]=~ /^-/)  # while arguments are switches
-        if ARGV[i]=="-c"
+        if ARGV[i]=="-a"
+            switches["ignoreExt"] = true
+            puts "\nWill ignore file extension, assume all files are emails"
+        elsif ARGV[i]=="-c"
             switches["removeCRs"] = true
             puts "\nWill fix lines ending with a CR"
         elsif ARGV[i]=="-l"
@@ -244,7 +248,12 @@ end
 
     if not canceled
         puts
-        files = Dir.glob("*.{eml,mai}", File::FNM_CASEFOLD)
+        if $switches["ignoreExt"]
+          globtext = "*"
+        else
+          globtext = "*.{eml,mai}"
+        end
+        files = Dir.glob(globtext, File::FNM_CASEFOLD)
         if files.size == 0
             puts "No *.eml files in this directory. mbox file not created."
             aFile.close
