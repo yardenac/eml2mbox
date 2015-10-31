@@ -210,20 +210,12 @@ end
     # Extract specified directory with emls and the target archive (if any)
     emlDir = "."     # default if not specified
     emlDir = ARGV[0] if ARGV[0]!=nil
-    mboxArchive = "archive.mbox"    # default if not specified
+    mboxArchive = emlDir + "archive.mbox"    # default if not specified
     mboxArchive = ARGV[1] if ARGV[1] != nil
 
     # Show specified settings
     puts "\nSpecified dir : "+emlDir
     puts "Specified file: "+mboxArchive+"\n"
-
-    # Check that the dir exists
-    if FileTest.directory?(emlDir)
-        Dir.chdir(emlDir)
-    else
-        puts "\n["+emlDir+"] is not a directory (might not exist). Please specify a valid dir"
-        exit(0)
-    end
 
     # Check if destination file exists. If yes allow user to select an option.
     canceled = false
@@ -240,6 +232,14 @@ end
     else
         # File doesn't exist, open for writing
         aFile = File.new(mboxArchive, "w");
+    end
+
+    # Check that the dir exists
+    if FileTest.directory?(emlDir)
+        Dir.chdir(emlDir)
+    else
+        puts "\n["+emlDir+"] is not a directory (might not exist). Please specify a valid dir"
+        exit(0)
     end
 
     if not canceled
