@@ -3,9 +3,9 @@
 #============================================================================================#
 # Converts a bunch of eml files into one mbox file.                                          #
 #                                                                                            #
-# Usage: [ruby] eml2mbx.rb [-c] [-l] [-s] [-yz] [emlpath [trgtmbx]]                          #
+# Usage: [ruby] eml2mbx.rb [-a] [-c] [-l] [-s] [-yz] [emlpath [trgtmbx]]                     #
 #         Switches:                                                                          #
-#            -a assume all files are emails - ignore extensions
+#            -a assume all files are emails - ignore extensions                              #
 #            -c Remove CRs (^M) appearing at end of lines (Unix)                             #
 #            -l Remove LFs appearing at beggining of lines (old Mac) - not tested            #
 #            -s Don't use standard mbox postmark formatting (for From_ line)                 #
