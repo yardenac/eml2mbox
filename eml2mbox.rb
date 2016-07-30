@@ -170,7 +170,6 @@ def formMboxDate(time,timezone)
     end
 end
 
-
 # Extracts all switches from the command line and returns
 # a hashmap with valid switch names as keys and booleans as values
 # Moves real params to the beggining of the ARGV array
@@ -208,83 +207,83 @@ end
 #     Main      #
 #===============#
 
-    $switches = extractSwitches()
-    $stdout.sync = true
+$switches = extractSwitches()
+$stdout.sync = true
 
-    # Extract specified directory with emls and the target archive (if any)
-    emlDir = "."     # default if not specified
-    emlDir = ARGV[0] if ARGV[0]!=nil
-    mboxArchive = emlDir + "archive.mbox"    # default if not specified
-    mboxArchive = ARGV[1] if ARGV[1] != nil
+# Extract specified directory with emls and the target archive (if any)
+emlDir = "."     # default if not specified
+emlDir = ARGV[0] if ARGV[0]!=nil
+mboxArchive = emlDir + "archive.mbox"    # default if not specified
+mboxArchive = ARGV[1] if ARGV[1] != nil
 
-    # Show specified settings
-    puts "\nSpecified dir : "+emlDir
-    puts "Specified file: "+mboxArchive+"\n"
+# Show specified settings
+puts "\nSpecified dir : "+emlDir
+puts "Specified file: "+mboxArchive+"\n"
 
-    # Check if destination file exists. If yes allow user to select an option.
-    canceled = false
-    if FileTest.exist?(mboxArchive)
-        print "\nFile ["+mboxArchive+"] exists! Please select: [A]ppend  [O]verwrite  [C]ancel (default) "
-        sel = STDIN.gets.chomp
-        if sel == 'A' or sel == 'a'
-            aFile = File.new(mboxArchive, "a");
-        elsif sel == 'O' or sel == 'o'
-            aFile = File.new(mboxArchive, "w");
-        else
-            canceled = true
-        end
-    else
-        # File doesn't exist, open for writing
+# Check if destination file exists. If yes allow user to select an option.
+canceled = false
+if FileTest.exist?(mboxArchive)
+    print "\nFile ["+mboxArchive+"] exists! Please select: [A]ppend  [O]verwrite  [C]ancel (default) "
+    sel = STDIN.gets.chomp
+    if sel == 'A' or sel == 'a'
+        aFile = File.new(mboxArchive, "a");
+    elsif sel == 'O' or sel == 'o'
         aFile = File.new(mboxArchive, "w");
-    end
-
-    # Check that the dir exists
-    if FileTest.directory?(emlDir)
-        Dir.chdir(emlDir)
     else
-        puts "\n["+emlDir+"] is not a directory (might not exist). Please specify a valid dir"
+        canceled = true
+    end
+else
+    # File doesn't exist, open for writing
+    aFile = File.new(mboxArchive, "w");
+end
+
+# Check that the dir exists
+if FileTest.directory?(emlDir)
+    Dir.chdir(emlDir)
+else
+    puts "\n["+emlDir+"] is not a directory (might not exist). Please specify a valid dir"
+    exit(0)
+end
+
+if not canceled
+    puts
+    if $switches["ignoreExt"]
+      globtext = "*"
+    else
+      globtext = "*.{eml,mai}"
+    end
+    files = Dir.glob(globtext, File::FNM_CASEFOLD)
+    if files.size == 0
+        puts "No *.eml files in this directory. mbox file not created."
+        aFile.close
+        File.delete(mboxArchive)
         exit(0)
     end
-
-    if not canceled
-        puts
-        if $switches["ignoreExt"]
-          globtext = "*"
+    # For each .eml file in the specified directory do the following
+    puts "About to process #{files.size} mail files"
+    filenum = 0
+    errors = 0
+    files.each() do |x|
+        $errors = false
+        filenum += 1
+        filenumtxt = filenum.to_s.rjust("#{files.size}".length)
+        print "#{filenumtxt}/#{files.size}: "+x+"  "
+        thisFile = FileInMemory.new()
+        File.open(x).each  {|item| thisFile.addLine(item) }
+        lines = thisFile.getProcessedLines
+        if lines == nil
+            $errors = true
+            print "[skipping mail without regular From: line]"
         else
-          globtext = "*.{eml,mai}"
+            lines.each {|line| aFile.puts line}
         end
-        files = Dir.glob(globtext, File::FNM_CASEFOLD)
-        if files.size == 0
-            puts "No *.eml files in this directory. mbox file not created."
-            aFile.close
-            File.delete(mboxArchive)
-            exit(0)
+        if $errors
+          print "\n"
+          errors += 1
+        else
+          print "\r"
         end
-        # For each .eml file in the specified directory do the following
-        puts "About to process #{files.size} mail files"
-        filenum = 0
-        errors = 0
-        files.each() do |x|
-            $errors = false
-            filenum += 1
-            filenumtxt = filenum.to_s.rjust("#{files.size}".length)
-            print "#{filenumtxt}/#{files.size}: "+x+"  "
-            thisFile = FileInMemory.new()
-            File.open(x).each  {|item| thisFile.addLine(item) }
-            lines = thisFile.getProcessedLines
-            if lines == nil
-                $errors = true
-                print "[skipping mail without regular From: line]"
-            else
-                lines.each {|line| aFile.puts line}
-            end
-            if $errors
-              print "\n"
-              errors += 1
-            else
-              print "\r"
-            end
-        end
-        aFile.close
-        puts "There were #{errors} files with errors.                                        "
     end
+    aFile.close
+    puts "There were #{errors} files with errors.                                        "
+end
