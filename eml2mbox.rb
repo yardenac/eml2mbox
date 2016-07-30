@@ -3,11 +3,13 @@
 #============================================================================================#
 # Converts a bunch of eml files into one mbox file.                                          #
 #                                                                                            #
-# Usage: [ruby] eml2mbx.rb [-c] [-l] [-s] [-yz] [emlpath [trgtmbx]]                          #
+# Usage: [ruby] eml2mbx.rb [-a] [-c] [-h] [-l] [-m] [-s] [-yz] [emlpath [trgtmbx]]           #
 #         Switches:                                                                          #
-#            -a assume all files are emails - ignore extensions
+#            -a assume all files are emails - ignore extensions                              #
 #            -c Remove CRs (^M) appearing at end of lines (Unix)                             #
 #            -l Remove LFs appearing at beggining of lines (old Mac) - not tested            #
+#            -h Show help and exit                                                           #
+#            -m Handle multiline From: headers (RFC822 phrase + routed_addr)                 #
 #            -s Don't use standard mbox postmark formatting (for From_ line)                 #
 #               This will force the use of original From and Date found in mail headers.     #
 #               Not recommended, unless you really have problems importing emls.             #
@@ -49,6 +51,7 @@ class FileInMemory
         @lines = Array.new
         @counter = 1          # keep the 0 position for the From_ line
         @from = nil           # from part of the From_ line
+        @prefrom = nil        # buffer for multiline From:
         @date = nil           # date part of the From_ line
     end
 
@@ -58,11 +61,21 @@ class FileInMemory
         # If the line is a 'false' From line, add a '>' to its beggining
         line = line.sub(/From/, '>From') if line =~ /^From/ and @from!=nil
 
+        # If previous line was a two-liner From header without address concatenate both
+        if @prefrom != nil
+            line = @prefrom + " " + line
+            @prefrom = nil
+        end
+        
         # If the line is the first valid From line, save it (without the line break)
-        if line =~ /^From:\s.*@/ and @from==nil
-            @from = line.sub(/From:/,'From')
-            @from = @from.chop    # Remove line break(s)
-            @from = standardizeFrom(@from) unless $switches["noStandardFromLine"]
+        if line =~ /^From:\s.*/ and @from==nil
+            if line =~ /.*@/
+                @from = line.sub(/From:/,'From')
+                @from = @from.chop    # Remove line break(s)
+                @from = standardizeFrom(@from) unless $switches["noStandardFromLine"]
+            elsif $switches["multilineFrom"]
+                @prefrom = line.chop
+            end
         end
 
         # Get the date
@@ -170,7 +183,6 @@ def formMboxDate(time,timezone)
     end
 end
 
-
 # Extracts all switches from the command line and returns
 # a hashmap with valid switch names as keys and booleans as values
 # Moves real params to the beggining of the ARGV array
@@ -184,9 +196,15 @@ def extractSwitches()
         elsif ARGV[i]=="-c"
             switches["removeCRs"] = true
             puts "\nWill fix lines ending with a CR"
+        elsif ARGV[i]=="-h"
+            switches["showHelp"] = true
+            puts "\nWill show help and exit"
         elsif ARGV[i]=="-l"
             switches["removeLFs"] = true
             puts "\nWill fix lines beggining with a LF"
+        elsif ARGV[i]=="-m"
+            switches["multilineFrom"] = true
+            puts "\nWill handle Outlook phrase + route_addr multiline From_ headers"
         elsif ARGV[i]=="-s"
             switches["noStandardFromLine"] = true
             puts "\nWill use From and Date from mail headers in From_ line"
@@ -204,87 +222,111 @@ def extractSwitches()
     return switches
 end
 
+# Shows usage instructions
+def showHellp()
+    puts "# Usage: [ruby] eml2mbx.rb [-a] [-c] [-h] [-l] [-m] [-s] [-yz] [emlpath [trgtmbx]]           #
+#         Switches:                                                                          #
+#            -a assume all files are emails - ignore extensions                              #
+#            -c Remove CRs (^M) appearing at end of lines (Unix)                             #
+#            -l Remove LFs appearing at beggining of lines (old Mac) - not tested            #
+#            -h Show help and exit                                                           #
+#            -m Handle multiline From: headers (RFC822 phrase + routed_addr)                 #
+#            -s Don't use standard mbox postmark formatting (for From_ line)                 #
+#               This will force the use of original From and Date found in mail headers.     #
+#               Not recommended, unless you really have problems importing emls.             #
+#           -yz Use this to force the order of the year and timezone in date in the From_    #
+#               line from the default [timezone][year] to [year][timezone].                  #
+#         emlpath - Path of dir with eml files. Defaults to the current dir if not specified #
+#         trgtmbx - Name of the target mbox file. Defaults to "archive.mbox" in 'emlpath'    #
+#                                                                                            #
+#============================================================================================#"
+end
+
 #===============#
 #     Main      #
 #===============#
 
-    $switches = extractSwitches()
-    $stdout.sync = true
+$switches = extractSwitches()
+if $switches["showHelp"]
+    showHelp()
+    abort("")
+end
+$stdout.sync = true
 
-    # Extract specified directory with emls and the target archive (if any)
-    emlDir = "."     # default if not specified
-    emlDir = ARGV[0] if ARGV[0]!=nil
-    mboxArchive = emlDir + "archive.mbox"    # default if not specified
-    mboxArchive = ARGV[1] if ARGV[1] != nil
+# Extract specified directory with emls and the target archive (if any)
+emlDir = "."     # default if not specified
+emlDir = ARGV[0] if ARGV[0]!=nil
+mboxArchive = emlDir + "archive.mbox"    # default if not specified
+mboxArchive = ARGV[1] if ARGV[1] != nil
 
-    # Show specified settings
-    puts "\nSpecified dir : "+emlDir
-    puts "Specified file: "+mboxArchive+"\n"
+# Show specified settings
+puts "\nSpecified dir : "+emlDir
+puts "Specified file: "+mboxArchive+"\n"
 
-    # Check if destination file exists. If yes allow user to select an option.
-    canceled = false
-    if FileTest.exist?(mboxArchive)
-        print "\nFile ["+mboxArchive+"] exists! Please select: [A]ppend  [O]verwrite  [C]ancel (default) "
-        sel = STDIN.gets.chomp
-        if sel == 'A' or sel == 'a'
-            aFile = File.new(mboxArchive, "a");
-        elsif sel == 'O' or sel == 'o'
-            aFile = File.new(mboxArchive, "w");
-        else
-            canceled = true
-        end
-    else
-        # File doesn't exist, open for writing
+# Check if destination file exists. If yes allow user to select an option.
+canceled = false
+if FileTest.exist?(mboxArchive)
+    print "\nFile ["+mboxArchive+"] exists! Please select: [A]ppend  [O]verwrite  [C]ancel (default) "
+    sel = STDIN.gets.chomp
+    if sel == 'A' or sel == 'a'
+        aFile = File.new(mboxArchive, "a");
+    elsif sel == 'O' or sel == 'o'
         aFile = File.new(mboxArchive, "w");
-    end
-
-    # Check that the dir exists
-    if FileTest.directory?(emlDir)
-        Dir.chdir(emlDir)
     else
-        puts "\n["+emlDir+"] is not a directory (might not exist). Please specify a valid dir"
+        canceled = true
+    end
+else
+    # File doesn't exist, open for writing
+    aFile = File.new(mboxArchive, "w");
+end
+
+# Check that the dir exists
+if FileTest.directory?(emlDir)
+    Dir.chdir(emlDir)
+else
+    puts "\n["+emlDir+"] is not a directory (might not exist). Please specify a valid dir"
+    exit(0)
+end
+
+if not canceled
+    puts
+    if $switches["ignoreExt"]
+      globtext = "*"
+    else
+      globtext = "*.{eml,mai}"
+    end
+    files = Dir.glob(globtext, File::FNM_CASEFOLD)
+    if files.size == 0
+        puts "No *.eml files in this directory. mbox file not created."
+        aFile.close
+        File.delete(mboxArchive)
         exit(0)
     end
-
-    if not canceled
-        puts
-        if $switches["ignoreExt"]
-          globtext = "*"
+    # For each .eml file in the specified directory do the following
+    puts "About to process #{files.size} mail files"
+    filenum = 0
+    errors = 0
+    files.each() do |x|
+        $errors = false
+        filenum += 1
+        filenumtxt = filenum.to_s.rjust("#{files.size}".length)
+        print "#{filenumtxt}/#{files.size}: "+x+"  "
+        thisFile = FileInMemory.new()
+        File.open(x).each  {|item| thisFile.addLine(item) }
+        lines = thisFile.getProcessedLines
+        if lines == nil
+            $errors = true
+            print "[skipping mail without regular From: line]"
         else
-          globtext = "*.{eml,mai}"
+            lines.each {|line| aFile.puts line}
         end
-        files = Dir.glob(globtext, File::FNM_CASEFOLD)
-        if files.size == 0
-            puts "No *.eml files in this directory. mbox file not created."
-            aFile.close
-            File.delete(mboxArchive)
-            exit(0)
+        if $errors
+          print "\n"
+          errors += 1
+        else
+          print "\r"
         end
-        # For each .eml file in the specified directory do the following
-        puts "About to process #{files.size} mail files"
-        filenum = 0
-        errors = 0
-        files.each() do |x|
-            $errors = false
-            filenum += 1
-            filenumtxt = filenum.to_s.rjust("#{files.size}".length)
-            print "#{filenumtxt}/#{files.size}: "+x+"  "
-            thisFile = FileInMemory.new()
-            File.open(x).each  {|item| thisFile.addLine(item) }
-            lines = thisFile.getProcessedLines
-            if lines == nil
-                $errors = true
-                print "[skipping mail without regular From: line]"
-            else
-                lines.each {|line| aFile.puts line}
-            end
-            if $errors
-              print "\n"
-              errors += 1
-            else
-              print "\r"
-            end
-        end
-        aFile.close
-        puts "There were #{errors} files with errors.                                        "
     end
+    aFile.close
+    puts "There were #{errors} files with errors.                                        "
+end
