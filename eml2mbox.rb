@@ -3,11 +3,12 @@
 #============================================================================================#
 # Converts a bunch of eml files into one mbox file.                                          #
 #                                                                                            #
-# Usage: [ruby] eml2mbx.rb [-a] [-c] [-l] [-m] [-s] [-yz] [emlpath [trgtmbx]]                #
+# Usage: [ruby] eml2mbx.rb [-a] [-c] [-h] [-l] [-m] [-s] [-yz] [emlpath [trgtmbx]]           #
 #         Switches:                                                                          #
 #            -a assume all files are emails - ignore extensions                              #
 #            -c Remove CRs (^M) appearing at end of lines (Unix)                             #
 #            -l Remove LFs appearing at beggining of lines (old Mac) - not tested            #
+#            -h Show help and exit                                                           #
 #            -m Handle multiline From: headers (RFC822 phrase + routed_addr)                 #
 #            -s Don't use standard mbox postmark formatting (for From_ line)                 #
 #               This will force the use of original From and Date found in mail headers.     #
@@ -195,6 +196,9 @@ def extractSwitches()
         elsif ARGV[i]=="-c"
             switches["removeCRs"] = true
             puts "\nWill fix lines ending with a CR"
+        elsif ARGV[i]=="-h"
+            switches["showHelp"] = true
+            puts "\nWill show help and exit"
         elsif ARGV[i]=="-l"
             switches["removeLFs"] = true
             puts "\nWill fix lines beggining with a LF"
@@ -218,11 +222,35 @@ def extractSwitches()
     return switches
 end
 
+# Shows usage instructions
+def showHellp()
+    puts "# Usage: [ruby] eml2mbx.rb [-a] [-c] [-h] [-l] [-m] [-s] [-yz] [emlpath [trgtmbx]]           #
+#         Switches:                                                                          #
+#            -a assume all files are emails - ignore extensions                              #
+#            -c Remove CRs (^M) appearing at end of lines (Unix)                             #
+#            -l Remove LFs appearing at beggining of lines (old Mac) - not tested            #
+#            -h Show help and exit                                                           #
+#            -m Handle multiline From: headers (RFC822 phrase + routed_addr)                 #
+#            -s Don't use standard mbox postmark formatting (for From_ line)                 #
+#               This will force the use of original From and Date found in mail headers.     #
+#               Not recommended, unless you really have problems importing emls.             #
+#           -yz Use this to force the order of the year and timezone in date in the From_    #
+#               line from the default [timezone][year] to [year][timezone].                  #
+#         emlpath - Path of dir with eml files. Defaults to the current dir if not specified #
+#         trgtmbx - Name of the target mbox file. Defaults to "archive.mbox" in 'emlpath'    #
+#                                                                                            #
+#============================================================================================#"
+end
+
 #===============#
 #     Main      #
 #===============#
 
 $switches = extractSwitches()
+if $switches["showHelp"]
+    showHelp()
+    abort("")
+end
 $stdout.sync = true
 
 # Extract specified directory with emls and the target archive (if any)
