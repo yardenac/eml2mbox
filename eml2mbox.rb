@@ -3,11 +3,12 @@
 #============================================================================================#
 # Converts a bunch of eml files into one mbox file.                                          #
 #                                                                                            #
-# Usage: [ruby] eml2mbx.rb [-a] [-c] [-l] [-s] [-yz] [emlpath [trgtmbx]]                     #
+# Usage: [ruby] eml2mbx.rb [-a] [-c] [-l] [-m] [-s] [-yz] [emlpath [trgtmbx]]                #
 #         Switches:                                                                          #
 #            -a assume all files are emails - ignore extensions                              #
 #            -c Remove CRs (^M) appearing at end of lines (Unix)                             #
 #            -l Remove LFs appearing at beggining of lines (old Mac) - not tested            #
+#            -m Handle multiline From: headers (RFC822 phrase + routed_addr)                 #
 #            -s Don't use standard mbox postmark formatting (for From_ line)                 #
 #               This will force the use of original From and Date found in mail headers.     #
 #               Not recommended, unless you really have problems importing emls.             #
@@ -49,6 +50,7 @@ class FileInMemory
         @lines = Array.new
         @counter = 1          # keep the 0 position for the From_ line
         @from = nil           # from part of the From_ line
+        @prefrom = nil        # buffer for multiline From:
         @date = nil           # date part of the From_ line
     end
 
@@ -58,11 +60,21 @@ class FileInMemory
         # If the line is a 'false' From line, add a '>' to its beggining
         line = line.sub(/From/, '>From') if line =~ /^From/ and @from!=nil
 
+        # If previous line was a two-liner From header without address concatenate both
+        if @prefrom != nil
+            line = @prefrom + " " + line
+            @prefrom = nil
+        end
+        
         # If the line is the first valid From line, save it (without the line break)
-        if line =~ /^From:\s.*@/ and @from==nil
-            @from = line.sub(/From:/,'From')
-            @from = @from.chop    # Remove line break(s)
-            @from = standardizeFrom(@from) unless $switches["noStandardFromLine"]
+        if line =~ /^From:\s.*/ and @from==nil
+            if line =~ /.*@/
+                @from = line.sub(/From:/,'From')
+                @from = @from.chop    # Remove line break(s)
+                @from = standardizeFrom(@from) unless $switches["noStandardFromLine"]
+            elsif $switches["multilineFrom"]
+                @prefrom = line.chop
+            end
         end
 
         # Get the date
@@ -186,6 +198,9 @@ def extractSwitches()
         elsif ARGV[i]=="-l"
             switches["removeLFs"] = true
             puts "\nWill fix lines beggining with a LF"
+        elsif ARGV[i]=="-m"
+            switches["multilineFrom"] = true
+            puts "\nWill handle Outlook phrase + route_addr multiline From_ headers"
         elsif ARGV[i]=="-s"
             switches["noStandardFromLine"] = true
             puts "\nWill use From and Date from mail headers in From_ line"
