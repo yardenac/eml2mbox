@@ -223,7 +223,7 @@ def extractSwitches()
 end
 
 # Shows usage instructions
-def showHellp()
+def showHelp()
     puts "# Usage: [ruby] eml2mbx.rb [-a] [-c] [-h] [-l] [-m] [-s] [-yz] [emlpath [trgtmbx]]           #
 #         Switches:                                                                          #
 #            -a assume all files are emails - ignore extensions                              #
@@ -237,7 +237,7 @@ def showHellp()
 #           -yz Use this to force the order of the year and timezone in date in the From_    #
 #               line from the default [timezone][year] to [year][timezone].                  #
 #         emlpath - Path of dir with eml files. Defaults to the current dir if not specified #
-#         trgtmbx - Name of the target mbox file. Defaults to "archive.mbox" in 'emlpath'    #
+#         trgtmbx - Name of the target mbox file. Defaults to 'archive.mbox' in 'emlpath'    #
 #                                                                                            #
 #============================================================================================#"
 end
