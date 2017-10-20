@@ -7,6 +7,7 @@
 #         Switches:                                                                          #
 #            -a assume all files are emails - ignore extensions                              #
 #            -c Remove CRs (^M) appearing at end of lines (Unix)                             #
+#            -f Act on a single .eml file, rather than an .eml dir                           #
 #            -l Remove LFs appearing at beggining of lines (old Mac) - not tested            #
 #            -h Show help and exit                                                           #
 #            -m Handle multiline From: headers (RFC822 phrase + routed_addr)                 #
@@ -196,6 +197,9 @@ def extractSwitches()
         elsif ARGV[i]=="-c"
             switches["removeCRs"] = true
             puts "\nWill fix lines ending with a CR"
+        elsif ARGV[i]=="-f"
+            switches["singleFile"] = true
+            puts "\nWill act on a single .eml file, rather than an .eml dir"
         elsif ARGV[i]=="-h"
             switches["showHelp"] = true
             puts "\nWill show help and exit"
@@ -255,7 +259,14 @@ $stdout.sync = true
 
 # Extract specified directory with emls and the target archive (if any)
 emlDir = "."     # default if not specified
-emlDir = ARGV[0] if ARGV[0]!=nil
+if ARGV[0]!=nil
+  if $switches["singleFile"]
+    emlDir = File.dirname(ARGV[0])
+    emlFile = File.basename(ARGV[0])
+  else
+    emlDir = ARGV[0]
+  end
+end
 mboxArchive = emlDir + "archive.mbox"    # default if not specified
 mboxArchive = ARGV[1] if ARGV[1] != nil
 
@@ -290,17 +301,27 @@ end
 
 if not canceled
     puts
-    if $switches["ignoreExt"]
-      globtext = "*"
+    if $switches["singleFile"]
+      files = [emlFile]
+      if not FileTest.exist?(emlFile)
+         puts "That eml file does not exist. mbox file not created."
+         aFile.close
+         File.delete(mboxArchive)
+         exit(0)
+      end
     else
-      globtext = "*.{eml,mai}"
-    end
-    files = Dir.glob(globtext, File::FNM_CASEFOLD)
-    if files.size == 0
+      if $switches["ignoreExt"]
+        globtext = "*"
+      else
+        globtext = "*.{eml,mai}"
+      end
+      files = Dir.glob(globtext, File::FNM_CASEFOLD)
+      if files.size == 0
         puts "No *.eml files in this directory. mbox file not created."
         aFile.close
         File.delete(mboxArchive)
         exit(0)
+      end
     end
     # For each .eml file in the specified directory do the following
     puts "About to process #{files.size} mail files"
